@@ -1,0 +1,20 @@
+# The dial name is on the parent input device, so match with ATTRS.
+SUBSYSTEM=="input", KERNEL=="event*", \
+    ATTRS{name}=="Surface Dial System Multi Axis", \
+    TAG+="uaccess", GROUP="input", MODE="0660"
+
+# uinput is created as a static node before its module loads. static_node
+# applies these permissions to that node, and the uaccess tag lets the
+# active session open it.
+KERNEL=="uinput", SUBSYSTEM=="misc", \
+    TAG+="uaccess", GROUP="input", MODE="0660", \
+    OPTIONS+="static_node=uinput"
+
+# Haptic clicks are output reports on hidraw. The input uaccess tag does not
+# cover that node. A Bluetooth dial is a uhid device named 0005:045E:091B.*,
+# with no idVendor attribute. A USB dial still has those attributes.
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", KERNELS=="0005:045E:091B.*", \
+    TAG+="uaccess", GROUP="input", MODE="0660"
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", \
+    ATTRS{idVendor}=="045e", ATTRS{idProduct}=="091b", \
+    TAG+="uaccess", GROUP="input", MODE="0660"

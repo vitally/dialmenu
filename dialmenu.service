@@ -1,0 +1,15 @@
+[Unit]
+Description=Surface Dial radial menu
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=GDK_BACKEND=wayland
+ExecStart=%h/.local/bin/dialmenu
+Restart=on-failure
+RestartSec=2
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=graphical-session.target

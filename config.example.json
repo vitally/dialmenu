@@ -1,0 +1,42 @@
+{
+  "menu_step": 6,
+  "menu_friction": 120,
+  "action_step": 4,
+  "invert": false,
+  "haptics": true,
+  "items": [
+    {
+      "label": "Scroll",
+      "icon": "scroll",
+      "rotate": "scroll"
+    },
+    {
+      "label": "Zoom",
+      "icon": "zoom",
+      "rotate": "zoom"
+    },
+    {
+      "label": "Exit",
+      "icon": "exit",
+      "rotate": "exit",
+      "click": "exit"
+    },
+    {
+      "label": "Volume",
+      "icon": "volume",
+      "rotate": "volume",
+      "click": "mute"
+    },
+    {
+      "label": "Apps",
+      "icon": "folder",
+      "items": [
+        {
+          "label": "Browser",
+          "icon": "B",
+          "click": { "type": "command", "run": "omarchy launch browser" }
+        }
+      ]
+    }
+  ]
+}
