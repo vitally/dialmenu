@@ -86,6 +86,14 @@ static gboolean open_dial(struct libevdev **device, char *path, size_t path_size
     return FALSE;
 }
 
+static void handle_input_event(const struct input_event *event) {
+    if (event->type == EV_KEY && event->code == BTN_0 && event->value != 2) {
+        post(DIAL_BUTTON, event->value);
+    } else if (event->type == EV_REL && event->code == REL_DIAL && event->value != 0) {
+        post(DIAL_ROTATE, event->value);
+    }
+}
+
 static gpointer device_thread(gpointer unused) {
     (void)unused;
     gboolean complained = FALSE;
@@ -121,21 +129,19 @@ static gpointer device_thread(gpointer unused) {
                 break;
             }
             struct input_event event;
-            int rc;
+            int rc = LIBEVDEV_READ_STATUS_SUCCESS;
             do {
                 rc = libevdev_next_event(device, LIBEVDEV_READ_FLAG_NORMAL, &event);
                 if (rc == LIBEVDEV_READ_STATUS_SYNC) {
-                    while (libevdev_next_event(device, LIBEVDEV_READ_FLAG_SYNC, &event) == LIBEVDEV_READ_STATUS_SYNC) {
+                    while ((rc = libevdev_next_event(device, LIBEVDEV_READ_FLAG_SYNC, &event)) ==
+                           LIBEVDEV_READ_STATUS_SYNC) {
+                        handle_input_event(&event);
                     }
-                    continue;
                 }
-                if (rc != LIBEVDEV_READ_STATUS_SUCCESS) {
+                if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
+                    handle_input_event(&event);
+                } else {
                     break;
-                }
-                if (event.type == EV_KEY && event.code == BTN_0 && event.value != 2) {
-                    post(DIAL_BUTTON, event.value);
-                } else if (event.type == EV_REL && event.code == REL_DIAL && event.value != 0) {
-                    post(DIAL_ROTATE, event.value);
                 }
             } while (rc == LIBEVDEV_READ_STATUS_SUCCESS);
             if (rc != -EAGAIN && rc != LIBEVDEV_READ_STATUS_SUCCESS && rc != LIBEVDEV_READ_STATUS_SYNC) {

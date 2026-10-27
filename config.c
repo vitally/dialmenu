@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <json-glib/json-glib.h>
+#include <stdio.h>
 #include <string.h>
 
 static const char *DEFAULT_JSON =
@@ -309,12 +310,21 @@ gboolean config_ensure_file(const char *path, GError **error) {
 }
 
 static gboolean rewrite_root(JsonParser *parser, const char *path, GError **error) {
+    char *tmp = g_strconcat(path, ".tmp", NULL);
     JsonGenerator *generator = json_generator_new();
     json_generator_set_pretty(generator, TRUE);
     json_generator_set_indent(generator, 2);
     json_generator_set_root(generator, json_parser_get_root(parser));
-    gboolean ok = json_generator_to_file(generator, path, error);
+    gboolean ok = json_generator_to_file(generator, tmp, error);
     g_object_unref(generator);
+    if (ok && rename(tmp, path) != 0) {
+        g_set_error(error, G_FILE_ERROR, g_file_error_from_errno(errno), "could not replace %s", path);
+        ok = FALSE;
+    }
+    if (!ok) {
+        g_unlink(tmp);
+    }
+    g_free(tmp);
     return ok;
 }
 

@@ -73,6 +73,10 @@ gboolean actions_init(GError **error) {
 
 static int pending_volume;
 static guint volume_source;
+static int pending_brightness;
+static guint brightness_source;
+static int pending_media;
+static guint media_source;
 static void spawn(char *const argv[]);
 
 static gboolean flush_volume(gpointer unused) {
@@ -104,6 +108,45 @@ static void command(const char *line) {
     }
     char *argv[] = {"sh", "-c", (char *)line, NULL};
     spawn(argv);
+}
+
+static gboolean flush_brightness(gpointer unused) {
+    (void)unused;
+    int steps = pending_brightness;
+    pending_brightness = 0;
+    brightness_source = 0;
+    if (steps == 0) {
+        return G_SOURCE_REMOVE;
+    }
+    char amount[16];
+    if (steps > 0) {
+        g_snprintf(amount, sizeof amount, "+%d%%", steps * 5);
+    } else {
+        g_snprintf(amount, sizeof amount, "%d%%-", -steps * 5);
+    }
+    char *argv[] = {"omarchy-brightness-display", amount, NULL};
+    spawn(argv);
+    return G_SOURCE_REMOVE;
+}
+
+static gboolean flush_media(gpointer unused) {
+    (void)unused;
+    int steps = pending_media;
+    pending_media = 0;
+    media_source = 0;
+    if (steps == 0) {
+        return G_SOURCE_REMOVE;
+    }
+    const char *which = steps > 0 ? "next" : "previous";
+    int count = steps > 0 ? steps : -steps;
+    if (count > 8) {
+        count = 8;
+    }
+    char script[160];
+    g_snprintf(script, sizeof script,
+               "n=0; while [ \"$n\" -lt %d ]; do omarchy-shell -q media %s; n=$((n+1)); done", count, which);
+    command(script);
+    return G_SOURCE_REMOVE;
 }
 
 static int token_code(const char *token) {
@@ -152,13 +195,6 @@ static int parse_chord(const char *spec, int *codes, int max) {
 }
 
 static void send_chord(const char *spec) {
-    if (!uinput) {
-        if (!uinput_warned) {
-            g_warning("key action \"%s\" needs /dev/uinput", spec ? spec : "");
-            uinput_warned = TRUE;
-        }
-        return;
-    }
     int codes[8];
     int count = parse_chord(spec, codes, 8);
     for (int i = 0; i < count; i++) {
@@ -170,24 +206,10 @@ static void send_chord(const char *spec) {
 }
 
 static void send_ctrl_wheel(int notches) {
-    if (!uinput) {
-        if (!uinput_warned) {
-            g_warning("scroll and zoom need /dev/uinput");
-            uinput_warned = TRUE;
-        }
-        return;
-    }
     emit(EV_REL, REL_WHEEL, notches);
 }
 
 static void send_zoom(int direction) {
-    if (!uinput) {
-        if (!uinput_warned) {
-            g_warning("zoom needs /dev/uinput");
-            uinput_warned = TRUE;
-        }
-        return;
-    }
     emit(EV_KEY, KEY_LEFTCTRL, 1);
     emit(EV_REL, REL_WHEEL, direction);
     emit(EV_KEY, KEY_LEFTCTRL, 0);
@@ -218,16 +240,18 @@ void actions_run(const Action *action, int direction) {
         spawn(argv);
         break;
     }
-    case ACT_BRIGHTNESS: {
-        char *argv[] = {"omarchy-brightness-display", direction >= 0 ? "+5%" : "5%-", NULL};
-        spawn(argv);
+    case ACT_BRIGHTNESS:
+        pending_brightness += direction >= 0 ? 1 : -1;
+        if (brightness_source == 0) {
+            brightness_source = g_timeout_add(60, flush_brightness, NULL);
+        }
         break;
-    }
-    case ACT_MEDIA: {
-        char *argv[] = {"omarchy-shell", "-q", "media", direction >= 0 ? "next" : "previous", NULL};
-        spawn(argv);
+    case ACT_MEDIA:
+        pending_media += direction >= 0 ? 1 : -1;
+        if (media_source == 0) {
+            media_source = g_timeout_add(60, flush_media, NULL);
+        }
         break;
-    }
     case ACT_PLAY: {
         char *argv[] = {"omarchy-shell", "-q", "media", "playPause", NULL};
         spawn(argv);

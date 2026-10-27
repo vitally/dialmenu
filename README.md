@@ -40,7 +40,7 @@ dialmenu launch LABEL ICON COMMAND [FOLDER]
 dialmenu remove LABEL [FOLDER]
 ```
 
-`ROTATE` and `CLICK` are `volume`, `mute`, `scroll`, `zoom`, `undo`, `exit`, `brightness`, `media`, `play`, or `none`. A folder opens another wheel. Back is the top wedge. A launch item runs its command and closes the wheel.
+`ROTATE` and `CLICK` are `volume`, `mute`, `scroll`, `zoom`, `undo`, `exit`, `brightness`, `media`, `play`, or `none`. A folder opens another wheel. Back is the top wedge. Releasing on a tool keeps that tool, including one inside a folder. A launch item runs its command and closes the wheel.
 
 `menu_step` plus `menu_friction` is how far the dial turns before the highlight moves. `action_step` is how far it turns before the selected tool runs, and it ignores friction. `invert` reverses direction. `haptics` turns the click on or off.
 
